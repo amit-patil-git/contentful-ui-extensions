@@ -60,7 +60,7 @@
             //console.log("Test"+api.space)
             //api.space.getEntries({content_type: 'product'})
             //console.log(api.space.getContentTypes())
-            api.space.getEntries({content_type: extension.parameters.instance.productContentType, locale: 'en'}).then((response) => {
+            api.space.getEntries({content_type: api.parameters.instance.productContentType, locale: 'en'}).then((response) => {
             	response.items.forEach(function (value) {
             		console.log(value);
                     var option = document.createElement("option")
@@ -76,7 +76,7 @@
             .catch(console.error)
             
             $("#product").on("change", function () {
-            	fieldValue.key = this.value;
+				//isEmpty(fieldValue.key) ? "" : fieldValue.key = this.value;
                 //api.field.setValue(this.value);
                 productChanged(this.value);
             })

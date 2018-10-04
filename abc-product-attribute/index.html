@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8"/>
+    <title>PIM Product Widget</title>
+    <!--
+    Include styles from the Contentful app.
+
+    See http://contentful.github.io/ui-extensions-sdk/styleguide for information on
+    how to include and apply these styles.
+     -->
+    <link rel="stylesheet" href="https://contentful.github.io/ui-extensions-sdk/cf-extension.css">
+    <style>
+     body { margin: 0; }
+     #entries { margin-top: 1em; }
+     #entries-list { margin-top: 1em; }
+     #rating { margin-right: 1em; }
+     .field-title { font-style: inherit;
+	    font-size: 15px;
+	    line-height: 32px;
+	    color: #8091a5;
+	    width: 100%;
+	    display: block;
+	    margin-top: 20px;
+	    margin-bottom: 20px;
+	    padding-left: 1em;
+	    border-left: 3px solid #c5d2d8; }
+    </style>
+
+    <!--
+    Load the Extensions API that is used to communicate with the containing app.
+    -->
+    <script src="https://unpkg.com/contentful-ui-extensions-sdk@3"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/2.1.4/jquery.js"></script>
+  </head>
+  <body>
+    <select id="product" class="cf-form-input" style="float: left;">
+      <option value=""></option>
+    </select>
+    <select id="variant" class="cf-form-input">
+      <option value=""></option>
+    </select>
+    <div class="field-title">
+    	<label data-test-id="field-locale-label"> Attributes </label>
+    </div>
+    <div id="attributes" class="entity-editor__field-heading">
+    </div>
+    <div class="field-title">
+    	<label data-test-id="field-locale-label"> PIM Product Description </label>
+    	<div id="pimDescription" class="cf-form-hint">
+    	This is text defined by the product manager in the product description field of Cockpit. This can be used for a product manager to pass information from product to the marketing team for consideration when merchandising. Lorem ipsum dolor sit amet, sapien etiam, nunc amet dolor ac odio mauris justo..
+		</div>
+	</div>
+    <script type="text/javascript">
+         window.contentfulExtension.init(function (api) {
+            api.window.startAutoResizer()
+        	var productMap = new Map();
+            var variantJson = "";
+            var fieldValue = api.field.getValue();
+            //console.log("Test"+api.space)
+            //api.space.getEntries({content_type: 'product'})
+            //console.log(api.space.getContentTypes())
+            api.space.getEntries({content_type: extension.parameters.instance.productContentType, locale: 'en'}).then((response) => {
+            	response.items.forEach(function (value) {
+            		console.log(value);
+                    var option = document.createElement("option")
+                    option.setAttribute("value", value.fields.key.en)
+                    option.innerText = value.fields.productName.en + " ("+value.fields.key.en+")"
+                    $("#product").append(option)
+                    productMap.set(value.fields.key.en, value.fields.variants.en)
+            	})
+            	//$("#product").val('PRD-W6P1K7DC').change();
+            	//$("#variant").val('2').change();
+            	
+            })
+            .catch(console.error)
+            
+            $("#product").on("change", function () {
+            	fieldValue.key = this.value;
+                //api.field.setValue(this.value);
+                productChanged(this.value);
+            })
+            
+            function isEmpty(val){
+                return (val === undefined || val == null || val.length <= 0) ? true : false;
+            }
+            
+            function productChanged (productValue) {
+            	$("#variant").find('option').remove().end().append('<option value=""></option>').val('');
+            	console.log(productValue);
+            	console.log(productMap.get(productValue));
+          		productMap.get(productValue).forEach(function (value) {
+          			var option = document.createElement("option")
+          			var key = isEmpty(value.key) ? value.id : value.key
+          					
+                    option.setAttribute("value", value.id)
+                    option.innerText = key + " ("+value.sku+")"
+                    $("#variant").append(option)
+              	})
+              	variantJson = productMap.get(productValue);
+            }
+            
+            $("#variant").on("change", function () {
+                variantChanged(this.value);
+            })
+            
+            function variantChanged (variantId) {
+            	console.log(variantId-1)
+            	api.field.setValue(variantJson[variantId-1]);
+            	console.log(variantJson[variantId-1]);
+            	//document.getElementById("attributes").innerHTML = JSON.stringify(variantJson[variantId-1]);
+            	var attributes = variantJson[variantId-1].attributes;
+            	renderAttributes(attributes);
+            }
+            
+            function renderAttributes(attributes) {
+            	var attribDiv = $('#attributes')
+            	attribDiv.html('');
+            	for(var i=0; i<attributes.length; i++) {
+            		var attribHtml = getAttribHtml(attributes[i]);
+            		attribDiv.append(attribHtml);
+            	}
+            }
+            
+            function getAttribHtml(attribute) {
+            	var returnStr = "";
+            	if (attribute.isSelectable == true && attribute.isVariable == true && attribute.value.type == 'value') {
+            		returnStr += '<div class="cf-form-input" > <div><label data-test-id="field-locale-label" style="float:left; width: 200px;">'+ attribute.label.translations.en +' </label><select id="'+attribute.name+'" class="cf-form-input" style="width: 30%">'
+	            	for(var i=0; i<attribute.value.value.length; i++) {
+		 							returnStr += '<option value="'+attribute.value.value[i].label.translations.en+'">'+attribute.value.value[i].label.translations.en +'</option>'
+	            	}
+	            	returnStr += '</select> </div></div>'
+            	}
+            	return returnStr
+            }
+            
+        })
+    </script>
+  </body>
+</html>

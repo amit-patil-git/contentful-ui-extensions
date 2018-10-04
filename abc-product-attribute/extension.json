@@ -1,0 +1,16 @@
+{
+  "name": "Product Attributes",
+  "id": "abc-product-attributes",
+  "fieldTypes": ["Object"],
+  "srcdoc": "./index.html",
+  "parameters": {
+    "instance": [
+      {
+        "id": "productContentType",
+        "name": "Product Content Type Id",
+        "type": "Symbol",
+        "default": "product"
+      }
+    ]
+  }
+}

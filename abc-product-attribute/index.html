@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8"/>
-    <title>PIM Product Widget</title>
+    <title>Product Attributes Widget</title>
     <!--
     Include styles from the Contentful app.
 
@@ -25,7 +25,35 @@
 	    margin-bottom: 20px;
 	    padding-left: 1em;
 	    border-left: 3px solid #c5d2d8; }
+        .entity-sidebar__state-select{margin-bottom:0.642857142857143em;}
+        .btn-action-select.btn-action-select{
+            display:flex;
+            overflow:hidden;
+            background: linear-gradient(to top, #0eb87f, #14d997);
+            border-color: #0eb87f;
+            border-radius:2px;
+            width:200px;
+            text-align: center;
+            margin-top: 20px;
+        }
+        .btn-action-select__action{
+            display:block;
+            position:relative;
+            border-right:none;
+            overflow:hidden;
+            white-space:nowrap;
+            line-height:40px;
+            background: transparent;
+            border: none;
+            color: white;
+            text-decoration-color: white;
+            font-size: inherit;
+            font-family: inherit;
+            width: 100%;
+        }
+
     </style>
+    
 
     <!--
     Load the Extensions API that is used to communicate with the containing app.
@@ -44,10 +72,17 @@
     	<label data-test-id="field-locale-label"> Attributes </label>
     </div>
     <div id="attributes" class="entity-editor__field-heading">
+            
+    </div>
+
+    <div class="entity-sidebar__state-select">
+        <div class="btn-action-select">
+            <button id="saveButton" class="btn-action-select__action" type="button">Save</button>
+        </div>
     </div>
     <div class="field-title">
-    	<label data-test-id="field-locale-label"> PIM Product Description </label>
-    	<div id="pimDescription" class="cf-form-hint">
+        <label data-test-id="field-locale-label"> PIM Product Description </label>
+     	<div id="pimDescription" class="cf-form-hint">
     	This is text defined by the product manager in the product description field of Cockpit. This can be used for a product manager to pass information from product to the marketing team for consideration when merchandising. Lorem ipsum dolor sit amet, sapien etiam, nunc amet dolor ac odio mauris justo..
 		</div>
 	</div>
@@ -57,18 +92,22 @@
         	var productMap = new Map();
             var variantJson = "";
             var fieldValue = api.field.getValue();
+            var lang = "en";
             //console.log("Test"+api.space)
             //api.space.getEntries({content_type: 'product'})
             //console.log(api.space.getContentTypes())
-            api.space.getEntries({content_type: api.parameters.instance.productContentType, locale: 'en'}).then((response) => {
+            api.space.getEntries({content_type: api.parameters.instance.productContentType}).then((response) => {
+                lang = api.field.locale;
+                console.log("Language ===="+ lang);
             	response.items.forEach(function (value) {
             		console.log(value);
                     var option = document.createElement("option")
                     option.setAttribute("value", value.fields.key.en)
-                    option.innerText = value.fields.productName.en + " ("+value.fields.key.en+")"
+                    option.innerText = value.fields.productName[lang] + " ("+value.fields.key.en+")"
                     $("#product").append(option)
                     productMap.set(value.fields.key.en, value.fields.variants.en)
             	})
+                renderDefaultValues();
             	//$("#product").val('PRD-W6P1K7DC').change();
             	//$("#variant").val('2').change();
             	
@@ -76,8 +115,10 @@
             .catch(console.error)
             
             $("#product").on("change", function () {
-				//isEmpty(fieldValue.key) ? "" : fieldValue.key = this.value;
-                //api.field.setValue(this.value);
+                fieldValue = {id: '',key: this.value, name: this.label, variantId:'', attributes:[]};
+                var attribDiv = $('#attributes')
+            	attribDiv.html('');
+                api.field.setValue(fieldValue);
                 productChanged(this.value);
             })
             
@@ -86,9 +127,13 @@
             }
             
             function productChanged (productValue) {
-            	$("#variant").find('option').remove().end().append('<option value=""></option>').val('');
-            	console.log(productValue);
+                console.log("productObject =="+productValue);
+            	// console.log("productObject value=="+productObject.value);
+                console.log("productMap =="+productMap.size);
+                // var productValue = productObject.value;
             	console.log(productMap.get(productValue));
+            	$("#variant").find('option').remove().end().append('<option value=""></option>').val('');
+
           		productMap.get(productValue).forEach(function (value) {
           			var option = document.createElement("option")
           			var key = isEmpty(value.key) ? value.id : value.key
@@ -101,39 +146,127 @@
             }
             
             $("#variant").on("change", function () {
+                var attribDiv = $('#attributes')
+            	attribDiv.html('');
                 variantChanged(this.value);
             })
+
             
             function variantChanged (variantId) {
             	console.log(variantId-1)
-            	api.field.setValue(variantJson[variantId-1]);
-            	console.log(variantJson[variantId-1]);
+                console.log(variantJson[variantId-1]);
             	//document.getElementById("attributes").innerHTML = JSON.stringify(variantJson[variantId-1]);
             	var attributes = variantJson[variantId-1].attributes;
-            	renderAttributes(attributes);
+                //isEmpty(fieldValue.key) ? "" : fieldValue.key = this.value;
+                //api.field.setValue(this.value);
+                // {attrLabel:'',attrName:'',attrAlias:'', attrValue:'',attrValueInRange:'',attrValueInValue:'' }
+                fieldValue.variantId = variantId;
+                for (var k = 0; k < attributes.length-1; k++) {
+                    var attribute = attributes[k];
+                    var attrValueInValue = ""; 
+                    var attrValueInRange = "";
+                    if (attribute.isSelectable == true) {
+                        if (attribute.value.type == 'value') {
+                            if (attribute.isVariable == false || attribute.value.value.length == 1) {
+                                attrValueInValue = attribute.value.value[0].label.translations[lang];
+                            } else {
+                                for(var i=0; i<attribute.value.value.length; i++) {
+                                    console.log("attribute.value.value[i].label.translations"+ JSON.stringify(attribute.value.value[i].label.translations));
+                                    attrValueInValue += ";;" + attribute.value.value[i].label.translations[lang];
+                                }
+                            }
+                        }
+                        if (attribute.value.type == 'range') {
+                            for(var i=0; i<attribute.value.range.length; i++) {
+                                attrValueInRange += ";;" + attribute.value.range[i].minimum+"-"+attribute.value.range[i].maximum+":"+attribute.value.range[i].increment;
+                            }
+                        }
+                        attribute = {attrLabel: attribute.label.translations[lang] ,attrName:attribute.name , attrAlias:'', attrValue:'',attrValueInRange:attrValueInRange,attrValueInValue:attrValueInValue };
+                    }
+                    fieldValue.attributes[k] = attribute;
+                }
+            	api.field.setValue(fieldValue);
+            	renderAttributes(fieldValue);   
             }
             
-            function renderAttributes(attributes) {
+            function renderAttributes(fieldValue) {
+                //console.log("fieldValue =="+JSON.stringify(fieldValue));
+
+                console.log("fieldValue =="+JSON.stringify(fieldValue));
+                var value = fieldValue;
             	var attribDiv = $('#attributes')
             	attribDiv.html('');
-            	for(var i=0; i<attributes.length; i++) {
-            		var attribHtml = getAttribHtml(attributes[i]);
-            		attribDiv.append(attribHtml);
-            	}
+                if (value.attributes.length > 0) {
+                    for(var i=0; i<value.attributes.length; i++) {
+                        var attribHtml = getAttribHtml(value.attributes[i]);
+                        attribDiv.append(attribHtml);
+                    }
+                }
             }
             
             function getAttribHtml(attribute) {
             	var returnStr = "";
-            	if (attribute.isSelectable == true && attribute.isVariable == true && attribute.value.type == 'value') {
-            		returnStr += '<div class="cf-form-input" > <div><label data-test-id="field-locale-label" style="float:left; width: 200px;">'+ attribute.label.translations.en +' </label><select id="'+attribute.name+'" class="cf-form-input" style="width: 30%">'
-	            	for(var i=0; i<attribute.value.value.length; i++) {
-		 							returnStr += '<option value="'+attribute.value.value[i].label.translations.en+'">'+attribute.value.value[i].label.translations.en +'</option>'
-	            	}
-	            	returnStr += '</select> </div></div>'
+            	if (!isEmpty(attribute.attrValueInValue)) {
+                    returnStr += '<div class="cf-form-input" > <div><label data-test-id="field-locale-label" style="float:left; width: 200px;line-height:35px">'+ attribute.attrLabel +'</label>'
+                    var strArr = attribute.attrValueInValue.split(";;"); 
+                    if (strArr.length == 1) {
+                        returnStr += '<input type="text" disabled="true" id="'+attribute.attrName+'" value="'+strArr[0]+'" name="attributeRange" class="cf-form-input x--directed" style="width: 30%"></input>'    
+                    } else {
+                        returnStr += '<select id="'+attribute.attrName+'" name="attributeValue" class="cf-form-input" style="width: 30%">'
+                        for(var i=0; i < strArr.length; i++) {
+                            if (strArr[i] == attribute.attrValue) {
+                                returnStr += '<option value="'+strArr[i]+'" selected="true">'+strArr[i] +'</option>'
+                            } else {
+                                returnStr += '<option value="'+strArr[i]+'">'+strArr[i] +'</option>'
+                            }
+                        }
+	            	    returnStr += '</select>'
+                    }
+                    returnStr += '</div></div>'
             	}
+                if (!isEmpty(attribute.attrValueInRange)) {
+                    returnStr += '<div class="cf-form-input" > <div><label data-test-id="field-locale-label" style="float:left; width: 200px;line-height:35px">'+ attribute.attrLabel +' </label>'
+                    returnStr += '<input type="text" id="'+attribute.attrName+'" value="'+attribute.attrValue+'" name="attributeRange" class="cf-form-input x--directed" style="width: 30%"></input>'
+                    returnStr += '</div></div>'
+                }
             	return returnStr
             }
+
+
+            function renderDefaultValues() {
+                var value = api.field.getValue();
+                // console.log("value.key ="+value.key);
+                // console.log("value.variantId ="+value.variantId);
+                if (!isEmpty(value.key)) {
+                    $("#product").val(value.key);
+                    productChanged($("#product").val());
+                    if (!isEmpty(value.variantId)) {
+                        $("#variant").val(value.variantId);
+                        renderAttributes(value);
+                    }
+                }
+            }
+
+            $("#saveButton").on("click", function () {
+                setAttributeValues();
+            })
+
+
+            function setAttributeValues() {
+                console.log("Test wwewe");
+                // console.log($('#attributes'));
+                // console.log($('#attributes').html());
+                var fieldValue = api.field.getValue();
+                for(var i=0; i<fieldValue.attributes.length; i++) {
+            		var attribute = fieldValue.attributes[i];
+            		var selectedValue = $('#'+attribute.attrName).val();
+                    attribute.attrValue = selectedValue;
+            	}
+                console.log(api.field.getValue());
+                api.field.setValue(fieldValue);
+            }
             
+
         })
     </script>
   </body>
